@@ -4,3 +4,4 @@ Scripts/
 pyvenv.cfg
 venv/
 .idea/
+Python/Login/users.txt
