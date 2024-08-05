@@ -1,6 +1,7 @@
 import os
 import toga
-from toga.style.pack import *
+from toga.style import Pack
+from toga.style.pack import COLUMN, CENTER, ROW
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -67,34 +68,29 @@ def button_handler(widget, **kwargs):
         error_label.style.update(color='green')
 
 def build(app):
-    box = toga.Box()
     global username_input
     global password_input
     global error_label
-    # Create username and password input fields
-    username_input = toga.TextInput(placeholder='Username', style=Pack(width=200, direction=ROW, alignment=CENTER))
-    password_input = toga.PasswordInput(placeholder='Password', style=Pack(width=200, direction=ROW, alignment=CENTER))
-    label_user = toga.Label("Username:", style=Pack(width=200, direction=ROW, alignment=CENTER))
-    label_pw = toga.Label("Password:", style=Pack(width=200, direction=ROW, alignment=CENTER))
 
-    # Create login and register buttons
-    login_button = toga.Button('Login', style=Pack(width=200), on_press=button_handler)
-    register_button = toga.Button('Register', style=Pack(width=200), on_press=button_handler)
+    username_input = toga.TextInput(placeholder='Username', style=Pack(width=300, padding=10))
+    password_input = toga.PasswordInput(placeholder='Password', style=Pack(width=300, padding=10))
+    label_user = toga.Label("Username:", style=Pack(padding=(5, 0)))
+    label_pw = toga.Label("Password:", style=Pack(padding=(5, 0)))
 
-    # Create boxes for username and password
-    username_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER))
+    login_button = toga.Button('Login', style=Pack(width=140, padding=10), on_press=button_handler)
+    register_button = toga.Button('Register', style=Pack(width=140, padding=10), on_press=button_handler)
+
+    username_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER, padding=10))
     username_box.add(label_user)
     username_box.add(username_input)
 
-    password_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER))
+    password_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER, padding=10))
     password_box.add(label_pw)
     password_box.add(password_input)
 
-    # Create error message label
-    error_label = toga.Label("", style=Pack(width=200, direction=ROW, alignment=CENTER, color='red'))
+    error_label = toga.Label("", style=Pack(width=300, padding=10, color='red', text_align=CENTER))
 
-    # Add widgets to the main window
-    box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER), children=[
+    box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, padding=20), children=[
         username_box,
         password_box,
         login_button,
