@@ -3,31 +3,32 @@ import re
 import os
 import csv
 
-
 def parse_thread_dump(file_content):
-    thread_pattern = r'^"(.+)"\s'
-    state_pattern = r'\s+java.lang.Thread.State:\s+(\w+)'
-    last_call_pattern = r'\s+at\s+(.+)'  # Renamed pattern for last call
-    thread_type_pattern = r"^(.*?)-\d+$"  # Pattern to extract thread type
+    thread_pattern = r'^"(.+)"\s' #Matches the thread name. It captures the text between double quotes at the start of each thread's information.
+    state_pattern = r'\s+java.lang.Thread.State:\s+(\w+)' # Matches the thread state, such as "RUNNABLE" or "WAITING," which appears after java.lang.Thread.State.
+    last_call_pattern = r'\s+at\s+(.+)'  # Matches the last method call in the stack trace (i.e., the line starting with "at").
+    custom_call_pattern = r'\s+at\s+(com\.crossjointest\..+)'  # Captures method calls from the specific package com.crossjointest, indicating custom code.
+    thread_type_pattern = r"^(.*?)-\d+$"  # Extracts the general type of the thread by removing any numeric suffixes at the end of the thread name.
 
     threads = []
     thread_name = None
     thread_type = None
     thread_state = None
-    last_call = None  # Renamed from stack_trace
+    last_call = None
+    last_custom_call = None
 
     lines = file_content.splitlines()
-    for i, line in enumerate(lines):
+    for line in lines:
         # Match thread name
         thread_match = re.match(thread_pattern, line)
         if thread_match:
-            # Append the previously completed thread
             if thread_name:
                 threads.append({
                     'name': thread_name,
                     'type': thread_type,
                     'state': thread_state,
-                    'last_call': last_call  # Changed field name
+                    'last_call': last_call,
+                    'last_custom_call': last_custom_call
                 })
 
             # Reset for the new thread
@@ -35,18 +36,23 @@ def parse_thread_dump(file_content):
             thread_type_match = re.match(thread_type_pattern, thread_name)
             thread_type = thread_type_match.group(1) if thread_type_match else thread_name
             thread_state = None
-            last_call = None  # Reset last_call for new thread
+            last_call = None
+            last_custom_call = None
 
         # Match thread state
         state_match = re.match(state_pattern, line)
         if state_match:
             thread_state = state_match.group(1)
 
-        # Match last call (only first line if there are multiple)
-        if last_call is None:
-            last_call_match = re.match(last_call_pattern, line)
-            if last_call_match:
-                last_call = last_call_match.group(1)
+        # Match last call (first call found)
+        last_call_match = re.match(last_call_pattern, line)
+        if last_call_match and last_call is None:
+            last_call = last_call_match.group(1)
+
+        # Capture the most recent custom call in the thread stack trace
+        custom_call_match = re.match(custom_call_pattern, line)
+        if custom_call_match:
+            last_custom_call = custom_call_match.group(1)
 
     # Append the last thread
     if thread_name:
@@ -54,19 +60,11 @@ def parse_thread_dump(file_content):
             'name': thread_name,
             'type': thread_type,
             'state': thread_state,
-            'last_call': last_call  # Changed field name
+            'last_call': last_call,
+            'last_custom_call': last_custom_call
         })
 
     return threads
-
-
-# Define the function to extract the thread type
-def extract_thread_type(thread_name):
-    match = re.match(r"^(.*?)-\d+$", thread_name)
-    if match:
-        return match.group(1)
-    return thread_name
-
 
 def extract_thread_instance_and_timestamp(filename):
     thread_instance = filename.split('-')[-1].split('_')[0]
@@ -89,7 +87,6 @@ def extract_thread_instance_and_timestamp(filename):
         'timestamp_second': timestamp_second
     }
 
-
 def analyze_thread_dumps(directory_path):
     results = []
     for filename in os.listdir(directory_path):
@@ -109,7 +106,6 @@ def analyze_thread_dumps(directory_path):
                 })
     return results
 
-
 def export_to_csv(results, output_path):
     with open(output_path, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';')
@@ -122,12 +118,14 @@ def export_to_csv(results, output_path):
             'Thread Type',
             'Thread Name',
             'State',
-            'Last Call'
+            'Last Call',
+            'Last Custom Call'
         ])
 
         for result in results:
             for thread in result['threads']:
                 last_call = thread['last_call'] if thread['last_call'] else ""
+                last_custom_call = thread['last_custom_call'] if thread['last_custom_call'] else ""
 
                 # Write the row with the various timestamp formats and thread details
                 csv_writer.writerow([
@@ -139,14 +137,12 @@ def export_to_csv(results, output_path):
                     thread['type'],
                     thread['name'],  # Thread Name
                     thread['state'],  # State
-                    thread['last_call']  # Stack Trace first line
+                    last_call,        # Last Call
+                    last_custom_call  # Last Custom Call with "com.crossjointest"
                 ])
-
 
 # Example usage
 directory_path = r"D:\Crossjoin Solutions_td_test\Test"
-#directory_path = r"D:\Crossjoin Solutions_td_test\Test_no_thread_type"
 output_path = r"D:\Crossjoin Solutions_td_test\Test\thread_dump_analysis.csv"
 results = analyze_thread_dumps(directory_path)
-# print(results)
 export_to_csv(results, output_path)
