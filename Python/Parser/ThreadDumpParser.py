@@ -3,11 +3,12 @@ import re
 import os
 import csv
 
+
 def parse_thread_dump(file_content):
-    thread_pattern = r'^"(.+)"\s' #Matches the thread name. It captures the text between double quotes at the start of each thread's information.
-    state_pattern = r'\s+java.lang.Thread.State:\s+(\w+)' # Matches the thread state, such as "RUNNABLE" or "WAITING," which appears after java.lang.Thread.State.
+    thread_pattern = r'^"(.+)"\s'  # Matches the thread name. It captures the text between double quotes at the start of each thread's information.
+    state_pattern = r'\s+java.lang.Thread.State:\s+(\w+)'  # Matches the thread state, such as "RUNNABLE" or "WAITING," which appears after java.lang.Thread.State.
     last_call_pattern = r'\s+at\s+(.+)'  # Matches the last method call in the stack trace (i.e., the line starting with "at").
-    custom_call_pattern = r'\s+at\s+(com\.crossjointest\..+)'  # Captures method calls from the specific package com.crossjointest, indicating custom code.
+    custom_call_pattern = r'\s+at\s+(.+crossjointest.+)'  # Captures method calls from the specific package com.crossjointest, indicating custom code.
     thread_type_pattern = r"^(.*?)-\d+$"  # Extracts the general type of the thread by removing any numeric suffixes at the end of the thread name.
 
     threads = []
@@ -33,7 +34,7 @@ def parse_thread_dump(file_content):
 
             # Reset for the new thread
             thread_name = thread_match.group(1)
-            thread_type_match = re.match(thread_type_pattern, thread_name)
+            thread_type_match = re.match(thread_type_pattern,  )
             thread_type = thread_type_match.group(1) if thread_type_match else thread_name
             thread_state = None
             last_call = None
@@ -44,16 +45,13 @@ def parse_thread_dump(file_content):
         if state_match:
             thread_state = state_match.group(1)
 
-        # Match last call (first call found)
-        last_call_match = re.match(last_call_pattern, line)
-        if last_call_match and last_call is None:
-            last_call = last_call_match.group(1)
+        # Match last call (first "at" line after the thread name)
+        if re.match(last_call_pattern, line) and last_call is None:
+            last_call = re.match(last_call_pattern, line).group(1)
 
-        # Capture the most recent custom call in the thread stack trace
-        custom_call_match = re.match(custom_call_pattern, line)
-        if custom_call_match:
-            last_custom_call = custom_call_match.group(1)
-
+        # Match last custom call (first "at" line containing "crossjointest")
+        if re.match(custom_call_pattern, line) and last_custom_call is None:
+            last_custom_call = re.match(custom_call_pattern, line).group(1)
     # Append the last thread
     if thread_name:
         threads.append({
@@ -65,6 +63,7 @@ def parse_thread_dump(file_content):
         })
 
     return threads
+
 
 def extract_thread_instance_and_timestamp(filename):
     thread_instance = filename.split('-')[-1].split('_')[0]
@@ -87,6 +86,7 @@ def extract_thread_instance_and_timestamp(filename):
         'timestamp_second': timestamp_second
     }
 
+
 def analyze_thread_dumps(directory_path):
     results = []
     for filename in os.listdir(directory_path):
@@ -105,6 +105,7 @@ def analyze_thread_dumps(directory_path):
                     'threads': threads
                 })
     return results
+
 
 def export_to_csv(results, output_path):
     with open(output_path, 'w', newline='') as csvfile:
@@ -137,12 +138,13 @@ def export_to_csv(results, output_path):
                     thread['type'],
                     thread['name'],  # Thread Name
                     thread['state'],  # State
-                    last_call,        # Last Call
+                    last_call,  # Last Call
                     last_custom_call  # Last Custom Call with "com.crossjointest"
                 ])
 
+
 # Example usage
-directory_path = r"D:\Crossjoin Solutions_td_test\Test"
-output_path = r"D:\Crossjoin Solutions_td_test\Test\thread_dump_analysis.csv"
+directory_path = r"D:\Crossjoin Solutions_td_test\crossjoin_td_test"
+output_path = r"D:\Crossjoin Solutions_td_test\Results\thread_dump_parsed2.csv"
 results = analyze_thread_dumps(directory_path)
 export_to_csv(results, output_path)
